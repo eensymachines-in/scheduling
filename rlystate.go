@@ -45,8 +45,8 @@ func NewRelayState(id string) *RelayState {
 
 // JSONRelayState : relaystate but in json format
 type JSONRelayState struct {
-	ON      int      `json:"on"`
-	OFF     int      `json:"off"`
+	ON      string   `json:"on"`
+	OFF     string   `json:"off"`
 	IDs     []string `json:"ids"`
 	Primary bool     `json:"primary"`
 }
@@ -55,15 +55,23 @@ type JSONRelayState struct {
 // this saves you the trouble of making a schedule via code,
 // from a json file it can read up a relaystate and convert that to schedule
 func (jrs *JSONRelayState) ToSchedule() (Schedule, error) {
+	onTm, err := TimeStr(jrs.ON).ToElapsedTm()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read ON time for schedule")
+	}
+	offTm, err := TimeStr(jrs.OFF).ToElapsedTm()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read OFF time for schedule")
+	}
 	offs := []*RelayState{}
 	ons := []*RelayState{}
 	for _, id := range jrs.IDs {
 		offs = append(offs, &RelayState{byte(0), id})
 		ons = append(ons, &RelayState{byte(1), id})
 	}
-	trg1, trg2 := NewTrg(jrs.OFF, offs...), NewTrg(jrs.ON, ons...)
+	trg1, trg2 := NewTrg(offTm, offs...), NewTrg(onTm, ons...)
 	if jrs.Primary {
 		return NewPrimarySchedule(trg1, trg2)
 	}
-	return nil, fmt.Errorf("Schedule type unknown")
+	return NewPatchSchedule(trg1, trg2)
 }

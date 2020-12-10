@@ -32,6 +32,9 @@ func (tr *rlyStateTrg) RelayIDs() ComparableSlice {
 	}
 	return result
 }
+
+// Intersects : finds if there are relays in 2 triggers that have the same id
+// in exact mode, all the relay ids shoudl be matching
 func (tr *rlyStateTrg) Intersects(other Trigger, exact bool) bool {
 	if other == nil {
 		// If there's nothing to intersct there isnt any intersection at all
@@ -43,6 +46,7 @@ func (tr *rlyStateTrg) Intersects(other Trigger, exact bool) bool {
 	if matches > 0 {
 		if exact {
 			if mm1 == 0 && mm2 == 0 {
+				// All the relays are exactly matching , no mismatches founds
 				return true
 			}
 			return false
@@ -53,7 +57,10 @@ func (tr *rlyStateTrg) Intersects(other Trigger, exact bool) bool {
 }
 
 func (tr *rlyStateTrg) Coincides(other Trigger) bool {
-
+	if tr.At() == other.At() {
+		return true
+	}
+	return false
 }
 
 // HasRelayWithID : scans thru all the relay states to know if the ID of the relay exists
