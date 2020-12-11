@@ -116,6 +116,7 @@ func (tr *rlyStateTrg) RelayCount() int {
 }
 
 // NewTrg : makes a new trigger  with variadic number of relays
+// A single trigger can have unique relay ids only
 func NewTrg(secs int, states ...*RelayState) Trigger {
 	result := rlyStateTrg{secs, []*RelayState{}}
 	for _, s := range states {
