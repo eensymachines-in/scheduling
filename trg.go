@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // rlyStateTrg : trigger is just a timestamp and collection of relay state
@@ -25,6 +26,9 @@ type Trigger interface {
 	Coincides(other Trigger) bool
 }
 
+func (tr *rlyStateTrg) String() string {
+	return fmt.Sprintf("%s, %v", tmStrFromUnixSecs(tr.at), tr.RelayIDs())
+}
 func (tr *rlyStateTrg) RelayIDs() ComparableSlice {
 	result := ComparableSlice{}
 	for _, item := range tr.rs {

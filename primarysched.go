@@ -13,8 +13,26 @@ import (
 type primarySched struct {
 	lower  Trigger
 	higher Trigger
+	// whenever the schedule gets in a conflict the LHS induces increment in the RHS conflict
+	conflicts int
+	delay     int // increasing this will increment the preceedence since this will be applied after a delay
 }
 
+func (ps *primarySched) Conflicts() int {
+	return ps.conflicts
+}
+func (ps *primarySched) AddConflict() Schedule {
+	ps.conflicts++
+	return ps
+}
+func (ps *primarySched) Delay() int {
+	return ps.delay
+}
+func (ps *primarySched) AddDelay(prior int) Schedule {
+	ps.delay = prior
+	ps.delay++
+	return ps
+}
 func (ps *primarySched) Triggers() (Trigger, Trigger) {
 	return ps.lower, ps.higher
 }
@@ -29,7 +47,7 @@ func (ps *primarySched) Close() {
 	log.Infof("%s Schedule is now closing", ps)
 }
 func (ps *primarySched) String() string {
-	return fmt.Sprintf("%s - %s", tmStrFromUnixSecs(ps.lower.At()), tmStrFromUnixSecs(ps.higher.At()))
+	return fmt.Sprintf("%s - %s %v %v", tmStrFromUnixSecs(ps.lower.At()), tmStrFromUnixSecs(ps.higher.At()), ps.lower.RelayIDs(), ps.higher.RelayIDs())
 }
 
 // NearFarTrigger : in context of the current time, this helps to get the triggers that are near or far
@@ -72,9 +90,13 @@ func (ps *primarySched) overlapsWith(another Schedule) bool {
 	} else {
 		min, max = hfdur2, hfdur1
 	}
-	if (mdptdis > (hfdur1 + hfdur2)) || ((mdptdis + min) < max) {
+	if outside, inside := (mdptdis > (hfdur1 + hfdur2)), ((mdptdis + min) < max); outside || inside {
 		// case when the schedules are clearing and not interferring with one another
 		// either one schedule is inside the other or on one side
+		if inside {
+			// Here we would want to adjust the preceedence too.
+			another.AddDelay(ps.Delay())
+		}
 		return false
 	}
 	// all other cases the schedules are either partially/exactly overlapping

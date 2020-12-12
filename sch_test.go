@@ -44,7 +44,6 @@ func TestScheduleRead(t *testing.T) {
 		return
 	}
 	t.Log("Now logging the JSONRelayState")
-	t.Log(c)
 	for _, s := range c.Schedules {
 		sched, err := s.ToSchedule()
 		if err != nil {
@@ -52,5 +51,30 @@ func TestScheduleRead(t *testing.T) {
 			return
 		}
 		t.Log(sched)
+	}
+}
+
+func TestScheduleNrFrTrigger(t *testing.T) {
+	jsonFile, _ := os.Open("test_sched.json")
+	// Reading bytes from the file and unmarshalling the same to struct values
+	bytes, _ := ioutil.ReadAll(jsonFile)
+	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
+	type conf struct {
+		Schedules []JSONRelayState `json:"schedules"`
+	}
+	c := conf{}
+	json.Unmarshal(bytes, &c)
+	for _, s := range c.Schedules {
+		sched, err := s.ToSchedule()
+		if err != nil {
+			t.Errorf("Error coverting to schedule objecy %s", err)
+			return
+		}
+		t.Logf("Schedule: %s", sched)
+		nr, fr, pre, post := sched.NearFarTrigger(elapsedSecondsNow())
+		t.Logf("Near trigger: %s", nr)
+		t.Logf("Far trigger: %s", fr)
+		t.Logf("Pre sleep: %d", pre)
+		t.Logf("Post sleep: %d", post)
 	}
 }
