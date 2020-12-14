@@ -6,8 +6,8 @@
         {"on":"04:30 PM", "off":"06:29 PM","primary":false, "ids":["IN1"]},
         {"on":"04:32 PM", "off":"06:28 PM","primary":false, "ids":["IN1"]},
         {"on":"04:28 PM", "off":"06:28 PM","primary":false, "ids":["IN2"]},
-        {"on":"04:30 PM", "off":"06:30 PM","primary":false, "ids":["IN1"]},
-        {"on":"06:30 PM", "off":"07:30 PM","primary":false, "ids":["IN1"]},
+        {"on":"04:30 PM", "off":"06:30 PM","primary":false, "ids":["IN1", "IN2"]},
+        {"on":"06:30 PM", "off":"07:30 PM","primary":false, "ids":["IN1", "IN2", "IN3"]},
         {"on":"06:31 PM", "off":"07:30 PM","primary":false, "ids":["IN1"]},
         {"on":"10:32 AM", "off":"12:32 PM","primary":false, "ids":["IN1"]}
     ]
