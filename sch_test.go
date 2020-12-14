@@ -122,13 +122,15 @@ func TestSchedulePatchConflicts(t *testing.T) {
 	}
 	c := conf{}
 	json.Unmarshal(bytes, &c)
-	primaSched, err := c.Schedules[0].ToSchedule()
+	// We are leaving out the primary schedule
+	// would test patch schedules wrt to other patch schedules
+	patchSched, err := c.Schedules[2].ToSchedule()
 	if err != nil {
 		t.Error(err)
-		panic("Failed to read the primary schedule")
+		panic("Failed to read the first patch schedule ")
 	}
 	for i, s := range c.Schedules {
-		if i > 0 {
+		if i > 2 {
 			// since we want to compare all with primary schedule
 			sched, err := s.ToSchedule()
 			if err != nil {
@@ -136,7 +138,8 @@ func TestSchedulePatchConflicts(t *testing.T) {
 				return
 			}
 			t.Logf("Schedule: %s", sched)
-			t.Logf("Conflicts: %t", primaSched.ConflictsWith(sched))
+			t.Logf("Conflicts: %t", patchSched.ConflictsWith(sched))
+			t.Logf("Delay: %d", sched.Delay())
 		}
 
 	}
