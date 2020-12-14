@@ -78,3 +78,66 @@ func TestScheduleNrFrTrigger(t *testing.T) {
 		t.Logf("Post sleep: %d", post)
 	}
 }
+
+/*This test can let you know if primary and secondary schedules correctly report */
+func TestScheduleConflicts(t *testing.T) {
+	jsonFile, _ := os.Open("test_sched2.json")
+	// Reading bytes from the file and unmarshalling the same to struct values
+	bytes, _ := ioutil.ReadAll(jsonFile)
+	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
+	type conf struct {
+		Schedules []JSONRelayState `json:"schedules"`
+	}
+	c := conf{}
+	json.Unmarshal(bytes, &c)
+	primaSched, err := c.Schedules[0].ToSchedule()
+	if err != nil {
+		t.Error(err)
+		panic("Failed to read the primary schedule")
+	}
+	for i, s := range c.Schedules {
+		if i > 0 {
+			// since we want to compare all with primary schedule
+			sched, err := s.ToSchedule()
+			if err != nil {
+				t.Errorf("Error coverting to schedule object %s", err)
+				return
+			}
+			t.Logf("Schedule: %s", sched)
+			t.Logf("Conflicts: %t", primaSched.ConflictsWith(sched))
+			t.Logf("Delay: %d", sched.Delay())
+		}
+
+	}
+}
+
+/*Here we test conflicts of 2 or more patch schedules amongst each other*/
+func TestSchedulePatchConflicts(t *testing.T) {
+	jsonFile, _ := os.Open("test_sched2.json")
+	// Reading bytes from the file and unmarshalling the same to struct values
+	bytes, _ := ioutil.ReadAll(jsonFile)
+	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
+	type conf struct {
+		Schedules []JSONRelayState `json:"schedules"`
+	}
+	c := conf{}
+	json.Unmarshal(bytes, &c)
+	primaSched, err := c.Schedules[0].ToSchedule()
+	if err != nil {
+		t.Error(err)
+		panic("Failed to read the primary schedule")
+	}
+	for i, s := range c.Schedules {
+		if i > 0 {
+			// since we want to compare all with primary schedule
+			sched, err := s.ToSchedule()
+			if err != nil {
+				t.Errorf("Error coverting to schedule object %s", err)
+				return
+			}
+			t.Logf("Schedule: %s", sched)
+			t.Logf("Conflicts: %t", primaSched.ConflictsWith(sched))
+		}
+
+	}
+}

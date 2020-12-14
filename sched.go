@@ -47,9 +47,9 @@ func NewSchedule(trg1, trg2 Trigger, primary bool) (Schedule, error) {
 		return nil, fmt.Errorf("%s-%s Triggers for the schedule are either not exactly intersecting or are coinciding", trg1, trg2)
 	}
 	if primary {
-		return &primarySched{l, h}, nil
+		return &primarySched{l, h, 0, 0}, nil
 	}
-	return &patchSchedule{&primarySched{l, h}}, nil
+	return &patchSchedule{&primarySched{l, h, 0, 0}}, nil
 
 }
 

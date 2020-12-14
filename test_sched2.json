@@ -1,0 +1,11 @@
+{
+    "schedules": [
+        {"on":"06:30 PM", "off":"06:30 AM","primary":true, "ids":["IN1","IN2","IN3","IN4"]},
+        {"on":"06:30 PM", "off":"06:30 AM","primary":true, "ids":["IN1","IN2","IN3","IN4"]},
+        {"on":"04:30 PM", "off":"06:29 PM","primary":false, "ids":["IN1"]},
+        {"on":"04:30 PM", "off":"06:30 PM","primary":false, "ids":["IN1"]},
+        {"on":"06:30 PM", "off":"07:30 PM","primary":false, "ids":["IN1"]},
+        {"on":"06:31 PM", "off":"07:30 PM","primary":false, "ids":["IN1"]},
+        {"on":"10:32 AM", "off":"12:32 PM","primary":false, "ids":["IN1"]}
+    ]
+}
