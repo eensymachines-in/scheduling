@@ -4,10 +4,10 @@ type patchSchedule struct {
 	*primarySched
 }
 
-func (pas *patchSchedule) NearFarTrigger(elapsed int) (Trigger, Trigger, int, int) {
+func (pas *patchSchedule) ToTask(elapsed int) ScheduleTask {
 	var nr, fr Trigger
 	// When its a patch schedule pre sleep is contextual as well.
-	pre := 0
+	pre := pas.Delay()
 	post := 0
 	// Patch schedules are not circular
 	// They allow pre sleep and are effective only between the triggers from top to bottom
@@ -15,19 +15,18 @@ func (pas *patchSchedule) NearFarTrigger(elapsed int) (Trigger, Trigger, int, in
 	nr, fr = pas.lower, pas.higher
 	if elapsed >= pas.lower.At() && elapsed < pas.higher.At() {
 		// Case of in between ..no pre sleep
-		pre = 0
 		post = pas.higher.At() - elapsed
 	} else {
 		// current time beyond the triggers, pre sleep comes into play
 		post = pas.higher.At() - pas.lower.At()
 		if elapsed < pas.lower.At() {
-			pre = pas.lower.At() - elapsed
+			pre += pas.lower.At() - elapsed
 		}
 		if elapsed >= pas.higher.At() {
-			pre = 86400 - elapsed + pas.lower.At()
+			pre += 86400 - elapsed + pas.lower.At()
 		}
 	}
-	return nr, fr, pre, post // for primary schedules pre sleep is always 0
+	return NewScheduleTask(nr, fr, pre, post)
 }
 
 func (pas *patchSchedule) ConflictsWith(another Schedule) bool {

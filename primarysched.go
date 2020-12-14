@@ -1,9 +1,7 @@
 package scheduling
 
 import (
-	"encoding/json"
 	"fmt"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -53,11 +51,12 @@ func (ps *primarySched) String() string {
 // NearFarTrigger : in context of the current time, this helps to get the triggers that are near or far
 // For any schedule when its applied - pre sleep - nr state apply - post sleep - fr state apply
 // For a primary schedule its thought to be circular, meaning to say : if beyond the trigger bounds the higher trigger is applied
-func (ps *primarySched) NearFarTrigger(elapsed int) (Trigger, Trigger, int, int) {
+func (ps *primarySched) ToTask(elapsed int) ScheduleTask {
 	// for primary schedule nr trigger will be applied then, sleep, then fr state
 	// for primary schedule there is no pre sleep - since its circular and applies beyond the 2 triggers as well
 	var nr, fr Trigger
 	var post int
+	pre := ps.Delay()
 	if elapsed >= ps.lower.At() && elapsed < ps.higher.At() {
 		nr, fr = ps.lower, ps.higher
 		post = ps.higher.At() - elapsed
@@ -70,7 +69,7 @@ func (ps *primarySched) NearFarTrigger(elapsed int) (Trigger, Trigger, int, int)
 			post = 86400 - elapsed + ps.lower.At()
 		}
 	}
-	return nr, fr, 0, post // for primary schedules pre sleep is always 0
+	return NewScheduleTask(nr, fr, pre, post)
 }
 
 func (ps *primarySched) overlapsWith(another Schedule) bool {
@@ -114,54 +113,24 @@ func (ps *primarySched) ConflictsWith(another Schedule) bool {
 	return ps.overlapsWith(another)
 }
 
-func (ps *primarySched) Apply(ok, cancel chan interface{}, send chan []byte, err chan error) {
-	nr, fr, pre, post := ps.NearFarTrigger(elapsedSecondsNow())
-	if pre > 0 {
-		// this will work as expected even when pre=0, but the problem is it sill still allow the processor to jump to the next task
-		<-time.After(time.Duration(pre) * time.Duration(1*time.Second))
-	}
-	byt, e := json.Marshal(nr)
-	if e != nil { // state of the trigger is applied
-		err <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
-		return
-	}
-	send <- byt
-	select {
-	// sleep duration is always a second extra than the sleep time
-	// so that incase the processor is fast enough this will still be in the next slot
-	case <-time.After(time.Duration(post+1) * time.Duration(1*time.Second)):
-		log.Info("End of schedule.. ")
-		if byt, e = json.Marshal(fr); e != nil {
-			err <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
-			return
-		}
-		send <- byt
-		ok <- struct{}{}
-	case <-cancel:
-		log.Warn("Schedule/Apply: Interruption")
-		ps.Close()
-	}
-	return
-}
-
-// Loop : this shall loop the schedule forever till there is a interruption or the schedule application fails
-func (ps *primarySched) Loop(cancel, interrupt chan interface{}, send chan []byte, loopErr chan error) {
-	// this channnel communicates the ok from apply function
-	// The loop still does not indicate done unless ofcourse the done <-nil
-	ok := make(chan interface{}, 1)
-	defer close(ok)
-	stop := make(chan interface{}) // this is to stop the currently running schedule
-	for {
-		ps.Apply(ok, stop, send, loopErr) // applies the schedul infinitely
-		select {
-		case <-cancel:
-		case <-interrupt:
-			close(stop)
-			log.Warn("Running schedule is stopped or interrupted, now closing the loop as well")
-			return
-		case <-ok:
-			// this is when the schedule has done applying for one cycle
-			// will go back to applying the next schedule for the then current time
-		}
-	}
-}
+// // Loop : this shall loop the schedule forever till there is a interruption or the schedule application fails
+// func (ps *primarySched) Loop(cancel, interrupt chan interface{}, send chan []byte, loopErr chan error) {
+// 	// this channnel communicates the ok from apply function
+// 	// The loop still does not indicate done unless ofcourse the done <-nil
+// 	ok := make(chan interface{}, 1)
+// 	defer close(ok)
+// 	stop := make(chan interface{}) // this is to stop the currently running schedule
+// 	for {
+// 		ps.Apply(ok, stop, send, loopErr) // applies the schedul infinitely
+// 		select {
+// 		case <-cancel:
+// 		case <-interrupt:
+// 			close(stop)
+// 			log.Warn("Running schedule is stopped or interrupted, now closing the loop as well")
+// 			return
+// 		case <-ok:
+// 			// this is when the schedule has done applying for one cycle
+// 			// will go back to applying the next schedule for the then current time
+// 		}
+// 	}
+// }

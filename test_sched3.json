@@ -1,0 +1,6 @@
+{
+    "schedules": [
+        {"on":"06:30 PM", "off":"06:50 PM","primary":true, "ids":["IN1","IN2","IN3","IN4"]},
+        {"on":"06:40 PM", "off":"06:49 PM","primary":false, "ids":["IN1"]}
+    ]
+}

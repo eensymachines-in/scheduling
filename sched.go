@@ -12,7 +12,7 @@ import (
 type Schedule interface {
 	Triggers() (Trigger, Trigger)
 	Duration() int
-	NearFarTrigger(elapsed int) (Trigger, Trigger, int, int)
+	ToTask(elapsed int) ScheduleTask
 	ConflictsWith(another Schedule) bool
 	Midpoint() int
 	Delay() int
@@ -20,6 +20,10 @@ type Schedule interface {
 	Conflicts() int
 	AddConflict() Schedule
 	Close()
+}
+
+// ScheduleTask : when the schedule calculated in context of current time it boils down to pre sleep > trigger > post sleep > trigger > end task
+type ScheduleTask interface {
 	Apply(ok, cancel chan interface{}, send chan []byte, err chan error)
 }
 
@@ -84,4 +88,9 @@ func (jrs *JSONRelayState) ToSchedule() (Schedule, error) {
 	trg1, trg2 := NewTrg(offTm, offs...), NewTrg(onTm, ons...)
 	return NewSchedule(trg1, trg2, jrs.Primary)
 
+}
+
+// NewScheduleTask Makes a simple new schedule task
+func NewScheduleTask(nr, fr Trigger, pre, post int) ScheduleTask {
+	return &schedTask{nr, fr, pre, post}
 }
