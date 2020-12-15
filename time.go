@@ -26,9 +26,9 @@ func (ts TimeStr) ToElapsedTm() (int, error) {
 	return int(elapsed), nil
 }
 
-// tmStrFromUnixSecs : for the unix seconds given this can convert that into TimeStr
+// TmStrFromUnixSecs : for the unix seconds given this can convert that into TimeStr
 // this application uses specific format of clock so that its compatible to PArsing of time
-func tmStrFromUnixSecs(elapsed int) TimeStr {
+func TmStrFromUnixSecs(elapsed int) TimeStr {
 	hr, rem := elapsed/3600, elapsed%3600
 	min := rem / 60
 	// fmt.Printf("%d %d\n", hr, min)
@@ -40,8 +40,8 @@ func tmStrFromUnixSecs(elapsed int) TimeStr {
 	return TimeStr(fmt.Sprintf("%02d:%02d %s", hr, min, ampm))
 }
 
-// elapsedSecondsNow : this can for any given day, calculate the seconds that have elapsed since midnight
-func elapsedSecondsNow() int {
+// ElapsedSecondsNow : this can for any given day, calculate the seconds that have elapsed since midnight
+func ElapsedSecondsNow() int {
 	hr, min, sec := time.Now().Clock()
 	return (hr * 3600) + (min * 60) + sec
 }

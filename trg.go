@@ -27,7 +27,7 @@ type Trigger interface {
 }
 
 func (tr *rlyStateTrg) String() string {
-	return fmt.Sprintf("%s, %v", tmStrFromUnixSecs(tr.at), tr.RelayIDs())
+	return fmt.Sprintf("%s, %v", TmStrFromUnixSecs(tr.at), tr.RelayIDs())
 }
 func (tr *rlyStateTrg) RelayIDs() ComparableSlice {
 	result := ComparableSlice{}

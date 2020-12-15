@@ -45,7 +45,7 @@ func (ps *primarySched) Close() {
 	log.Infof("%s Schedule is now closing", ps)
 }
 func (ps *primarySched) String() string {
-	return fmt.Sprintf("%s - %s %v %v", tmStrFromUnixSecs(ps.lower.At()), tmStrFromUnixSecs(ps.higher.At()), ps.lower.RelayIDs(), ps.higher.RelayIDs())
+	return fmt.Sprintf("%s - %s %v %v", TmStrFromUnixSecs(ps.lower.At()), TmStrFromUnixSecs(ps.higher.At()), ps.lower.RelayIDs(), ps.higher.RelayIDs())
 }
 
 // NearFarTrigger : in context of the current time, this helps to get the triggers that are near or far
@@ -112,25 +112,3 @@ func (ps *primarySched) ConflictsWith(another Schedule) bool {
 	}
 	return ps.overlapsWith(another)
 }
-
-// // Loop : this shall loop the schedule forever till there is a interruption or the schedule application fails
-// func (ps *primarySched) Loop(cancel, interrupt chan interface{}, send chan []byte, loopErr chan error) {
-// 	// this channnel communicates the ok from apply function
-// 	// The loop still does not indicate done unless ofcourse the done <-nil
-// 	ok := make(chan interface{}, 1)
-// 	defer close(ok)
-// 	stop := make(chan interface{}) // this is to stop the currently running schedule
-// 	for {
-// 		ps.Apply(ok, stop, send, loopErr) // applies the schedul infinitely
-// 		select {
-// 		case <-cancel:
-// 		case <-interrupt:
-// 			close(stop)
-// 			log.Warn("Running schedule is stopped or interrupted, now closing the loop as well")
-// 			return
-// 		case <-ok:
-// 			// this is when the schedule has done applying for one cycle
-// 			// will go back to applying the next schedule for the then current time
-// 		}
-// 	}
-// }
