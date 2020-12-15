@@ -25,6 +25,7 @@ type Schedule interface {
 // ScheduleTask : when the schedule calculated in context of current time it boils down to pre sleep > trigger > post sleep > trigger > end task
 type ScheduleTask interface {
 	Apply(ok, cancel chan interface{}, send chan []byte, err chan error)
+	Loop(cancel, interrupt chan interface{}, send chan []byte, loopErr chan error)
 }
 
 func sortTriggers(trg1, trg2 Trigger) (l, h Trigger, e error) {
