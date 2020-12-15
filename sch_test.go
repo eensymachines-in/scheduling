@@ -185,7 +185,7 @@ func TestScheduleApply(t *testing.T) {
 	}(send)
 	for _, s := range scheds {
 		if s.Conflicts() == 0 {
-			task := s.ToTask(elapsedSecondsNow())
+			task := s.ToTask(ElapsedSecondsNow())
 			go task.Apply(ok, cancel, send, err)
 		} else {
 			t.Logf("%s Schedule has %d conflicts", s, s.Conflicts())
