@@ -5,14 +5,20 @@ Using this package from client code should be easy if you get your head around t
 */
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"sync"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Schedule : is the handle for external packages
 type Schedule interface {
 	Triggers() (Trigger, Trigger)
 	Duration() int
-	ToTask(elapsed int) ScheduleTask
 	ConflictsWith(another Schedule) bool
 	Midpoint() int
 	Delay() int
@@ -20,12 +26,56 @@ type Schedule interface {
 	Conflicts() int
 	AddConflict() Schedule
 	Close()
+	ToTask() (Trigger, Trigger, int, int)
 }
 
-// ScheduleTask : when the schedule calculated in context of current time it boils down to pre sleep > trigger > post sleep > trigger > end task
-type ScheduleTask interface {
-	Apply(ok, cancel chan interface{}, send chan []byte, err chan error)
-	Loop(cancel, interrupt chan interface{}, send chan []byte, loopErr chan error)
+// SignalCtx : since signals communicate on cancellation only
+type SignalCtx struct {
+	Cancel chan interface{}
+}
+
+// Close :Closes down the channels within
+func (sc *SignalCtx) Close() {
+	close(sc.Cancel)
+}
+
+// SchedCtx : for async routines on schedules this is helpful as a flyweight object
+type SchedCtx struct {
+	Ok     chan interface{}
+	Cancel chan interface{}
+	Send   chan []byte
+	Err    chan error
+	once   sync.Once
+}
+
+// Close :Closes down the channels within
+func (schc *SchedCtx) Close() {
+	// safe closing all the channels only once
+	// https://go101.org/article/channel-closing.html
+	schc.once.Do(func() {
+		if schc.Ok != nil {
+			close(schc.Ok)
+		}
+		if schc.Cancel != nil {
+			close(schc.Cancel)
+		}
+		if schc.Send != nil {
+			close(schc.Send)
+		}
+		if schc.Err != nil {
+			close(schc.Err)
+		}
+	})
+}
+
+// SchedLoopCtx : loops are often interrupted but not closed, this often indicates restarting the loop
+type SchedLoopCtx struct {
+	Interrupt chan interface{}
+}
+
+// Close :Closes down the channels within
+func (slc *SchedLoopCtx) Close() {
+	close(slc.Interrupt)
 }
 
 func sortTriggers(trg1, trg2 Trigger) (l, h Trigger, e error) {
@@ -56,6 +106,73 @@ func NewSchedule(trg1, trg2 Trigger, primary bool) (Schedule, error) {
 	}
 	return &patchSchedule{&primarySched{l, h, 0, 0}}, nil
 
+}
+
+// Apply : applies the schedule once for a cycle pre>state>post>state
+func Apply(sch Schedule, ctx *SchedCtx) {
+	if sch == nil {
+		ctx.Err <- fmt.Errorf("Schedule/Apply: Null schedule, cannot apply")
+		return
+	}
+	nr, fr, pre, post := sch.ToTask()
+	log.Debugf("Near: %s Far: %s Pre: %d Post: %d\n", nr, fr, pre, post)
+	if pre > 0 {
+		// this will work as expected even when pre=0, but the problem is it sill still allow the processor to jump to the next task
+		<-time.After(time.Duration(pre) * time.Duration(1*time.Second))
+	}
+	byt, e := json.Marshal(nr)
+	if e != nil { // state of the trigger is applied
+		ctx.Err <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
+		return
+	}
+	if ctx != nil && ctx.Send != nil {
+		ctx.Send <- byt
+	} else {
+		log.Debugf("TCP: %s", string(byt))
+	}
+
+	select {
+	// sleep duration is always a second extra than the sleep time
+	// so that incase the processor is fast enough this will still be in the next slot
+	case <-time.After(time.Duration(post+1) * time.Duration(1*time.Second)):
+		log.Info("End of post duration")
+		if byt, e = json.Marshal(fr); e != nil {
+			ctx.Err <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
+			return
+		}
+		if ctx != nil && ctx.Send != nil {
+			ctx.Send <- byt
+		} else {
+			log.Debugf("TCP: %s", string(byt))
+		}
+		ctx.Ok <- struct{}{}
+	case <-ctx.Cancel:
+		log.Warn("Task/Apply: Interruption\n")
+	}
+	return
+}
+
+// Loop : this shall apply the schedule infinetly till the schedule is running fine
+func Loop(sch Schedule, sigctx *SignalCtx, loopctx *SchedLoopCtx) (chan []byte, chan error) {
+	// this channnel communicates the ok from apply function
+	// The loop still does not indicate done unless ofcourse the done <-nil
+	schCtx := SchedCtx{Ok: make(chan interface{}, 1), Cancel: make(chan interface{}), Send: make(chan []byte, 10), Err: make(chan error, 10)}
+	defer schCtx.Close()
+	go func() {
+		for {
+			Apply(sch, &schCtx)
+			select {
+			case <-sigctx.Cancel:
+			case <-loopctx.Interrupt:
+				// Incase there's a signal interruption or from file change, the loop will have to quit its infinite nature
+				return
+			case <-schCtx.Ok:
+				// this is when the schedule has done applying for one cycle
+				// will go back to applying the next schedule for the then current time
+			}
+		}
+	}()
+	return schCtx.Send, schCtx.Err
 }
 
 // JSONRelayState : relaystate but in json format
@@ -91,7 +208,27 @@ func (jrs *JSONRelayState) ToSchedule() (Schedule, error) {
 
 }
 
-// NewScheduleTask Makes a simple new schedule task
-func NewScheduleTask(nr, fr Trigger, pre, post int) ScheduleTask {
-	return &schedTask{nr, fr, pre, post}
+// ReadScheduleFile : just so that we can read json schedule file, and get slice of schedules
+func ReadScheduleFile(file string) ([]Schedule, error) {
+	jsonFile, _ := os.Open(file)
+	// Reading bytes from the file and unmarshalling the same to struct values
+	bytes, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
+	type conf struct {
+		Schedules []JSONRelayState `json:"schedules"`
+	}
+	c := conf{}
+	json.Unmarshal(bytes, &c)
+	scheds := []Schedule{}
+	for _, s := range c.Schedules {
+		sched, err := s.ToSchedule()
+		if err != nil {
+			return nil, err
+		}
+		scheds = append(scheds, sched)
+	}
+	return scheds, nil
 }

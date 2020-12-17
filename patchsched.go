@@ -4,7 +4,8 @@ type patchSchedule struct {
 	*primarySched
 }
 
-func (pas *patchSchedule) ToTask(elapsed int) ScheduleTask {
+func (pas *patchSchedule) ToTask() (Trigger, Trigger, int, int) {
+	elapsed := ElapsedSecondsNow()
 	var nr, fr Trigger
 	// When its a patch schedule pre sleep is contextual as well.
 	pre := pas.Delay()
@@ -26,7 +27,7 @@ func (pas *patchSchedule) ToTask(elapsed int) ScheduleTask {
 			pre += 86400 - elapsed + pas.lower.At()
 		}
 	}
-	return NewScheduleTask(nr, fr, pre, post)
+	return nr, fr, pre, post
 }
 
 func (pas *patchSchedule) ConflictsWith(another Schedule) bool {

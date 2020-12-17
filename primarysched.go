@@ -51,9 +51,10 @@ func (ps *primarySched) String() string {
 // NearFarTrigger : in context of the current time, this helps to get the triggers that are near or far
 // For any schedule when its applied - pre sleep - nr state apply - post sleep - fr state apply
 // For a primary schedule its thought to be circular, meaning to say : if beyond the trigger bounds the higher trigger is applied
-func (ps *primarySched) ToTask(elapsed int) ScheduleTask {
+func (ps *primarySched) ToTask() (Trigger, Trigger, int, int) {
 	// for primary schedule nr trigger will be applied then, sleep, then fr state
 	// for primary schedule there is no pre sleep - since its circular and applies beyond the 2 triggers as well
+	elapsed := ElapsedSecondsNow()
 	var nr, fr Trigger
 	var post int
 	pre := ps.Delay()
@@ -69,7 +70,7 @@ func (ps *primarySched) ToTask(elapsed int) ScheduleTask {
 			post = 86400 - elapsed + ps.lower.At()
 		}
 	}
-	return NewScheduleTask(nr, fr, pre, post)
+	return nr, fr, pre, post
 }
 
 func (ps *primarySched) overlapsWith(another Schedule) bool {

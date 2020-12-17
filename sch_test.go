@@ -1,168 +1,60 @@
 package scheduling
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/stretchr/testify/assert"
+	log "github.com/sirupsen/logrus"
 )
 
-func TestComparableSlice(t *testing.T) {
-	sl1 := ComparableSlice{"IN1", "IN2", "IN3"}
-	sl2 := ComparableSlice{"IN2", "IN3", "IN4", "IN1"}
-	matches, mismatch1, mismatch2 := sl1.Intersection(sl2)
-	assert.Equal(t, 3, matches, "Was expecting 2 matches in the slices above")
-	assert.Equal(t, 0, mismatch1, "Incorrect mismatches on the first")
-	assert.Equal(t, 1, mismatch2, "Incorrect mismatches on the second")
-
-	t.Log("--------------------------\n")
-	sl1 = ComparableSlice{}
-	sl2 = ComparableSlice{"IN2", "IN3", "IN4", "IN1"}
-	matches, mismatch1, mismatch2 = sl1.Intersection(sl2)
-	assert.Equal(t, 0, matches, "Was expecting 2 matches in the slices above")
-	assert.Equal(t, 0, mismatch1, "Incorrect mismatches on the first")
-	assert.Equal(t, 4, mismatch2, "Incorrect mismatches on the second")
+func init() {
+	// Log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&log.JSONFormatter{})
+	// Output to stdout instead of the default stderr
+	// Can be any io.Writer, see below for File example
+	log.SetOutput(os.Stdout)
+	// Only log the warning severity or above.
+	log.SetLevel(log.DebugLevel)
 }
 
-func TestScheduleRead(t *testing.T) {
-	jsonFile, err := os.Open("test_sched.json")
+func TestReadSchedules(t *testing.T) {
+	// TestReadSchedules : just about reading schedules and converting them to schedule objects
+	scheds, err := ReadScheduleFile("test_sched.json")
 	if err != nil {
 		t.Error(err)
-		return
+		panic("TestReadSchedules: error reading schedule files")
 	}
-	// Reading bytes from the file and unmarshalling the same to struct values
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
-	type conf struct {
-		Schedules []JSONRelayState `json:"schedules"`
-	}
-	c := conf{}
-	if json.Unmarshal(bytes, &c) != nil {
-		t.Error("Failed to unmarshal json from file")
-		return
-	}
-	t.Log("Now logging the JSONRelayState")
-	for _, s := range c.Schedules {
-		sched, err := s.ToSchedule()
-		if err != nil {
-			t.Errorf("Error coverting to schedule objecy %s", err)
-			return
-		}
-		t.Log(sched)
+	for _, s := range scheds {
+		t.Logf("%s\n", s)
 	}
 }
 
-// func TestScheduleNrFrTrigger(t *testing.T) {
-// 	jsonFile, _ := os.Open("test_sched.json")
-// 	// Reading bytes from the file and unmarshalling the same to struct values
-// 	bytes, _ := ioutil.ReadAll(jsonFile)
-// 	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
-// 	type conf struct {
-// 		Schedules []JSONRelayState `json:"schedules"`
-// 	}
-// 	c := conf{}
-// 	json.Unmarshal(bytes, &c)
-// 	for _, s := range c.Schedules {
-// 		sched, err := s.ToSchedule()
-// 		if err != nil {
-// 			t.Errorf("Error coverting to schedule objecy %s", err)
-// 			return
-// 		}
-// 		t.Logf("Schedule: %s", sched)
-// 		nr, fr, pre, post := sched.NearFarTrigger(elapsedSecondsNow())
-// 		t.Logf("Near trigger: %s", nr)
-// 		t.Logf("Far trigger: %s", fr)
-// 		t.Logf("Pre sleep: %d", pre)
-// 		t.Logf("Post sleep: %d", post)
-// 	}
-// }
-
-/*This test can let you know if primary and secondary schedules correctly report */
 func TestScheduleConflicts(t *testing.T) {
-	jsonFile, _ := os.Open("test_sched2.json")
-	// Reading bytes from the file and unmarshalling the same to struct values
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
-	type conf struct {
-		Schedules []JSONRelayState `json:"schedules"`
-	}
-	c := conf{}
-	json.Unmarshal(bytes, &c)
-	primaSched, err := c.Schedules[0].ToSchedule()
+	scheds, err := ReadScheduleFile("test_sched3.json")
 	if err != nil {
 		t.Error(err)
-		panic("Failed to read the primary schedule")
+		panic("TestReadSchedules: error reading schedule files")
 	}
-	for i, s := range c.Schedules {
-		if i > 0 {
-			// since we want to compare all with primary schedule
-			sched, err := s.ToSchedule()
-			if err != nil {
-				t.Errorf("Error coverting to schedule object %s", err)
-				return
-			}
-			t.Logf("Schedule: %s", sched)
-			t.Logf("Conflicts: %t", primaSched.ConflictsWith(sched))
-			t.Logf("Delay: %d", sched.Delay())
+	if len(scheds) == 0 {
+		t.Error("")
+	}
+	primaSched := scheds[0]
+	for _, s := range scheds[1:] {
+		if primaSched.ConflictsWith(s) {
+			t.Logf("%s has conflict with primary schedule", s)
 		}
-
-	}
-}
-
-/*Here we test conflicts of 2 or more patch schedules amongst each other*/
-func TestSchedulePatchConflicts(t *testing.T) {
-	jsonFile, _ := os.Open("test_sched2.json")
-	// Reading bytes from the file and unmarshalling the same to struct values
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
-	type conf struct {
-		Schedules []JSONRelayState `json:"schedules"`
-	}
-	c := conf{}
-	json.Unmarshal(bytes, &c)
-	// We are leaving out the primary schedule
-	// would test patch schedules wrt to other patch schedules
-	patchSched, err := c.Schedules[2].ToSchedule()
-	if err != nil {
-		t.Error(err)
-		panic("Failed to read the first patch schedule ")
-	}
-	for i, s := range c.Schedules {
-		if i > 2 {
-			// since we want to compare all with primary schedule
-			sched, err := s.ToSchedule()
-			if err != nil {
-				t.Errorf("Error coverting to schedule object %s", err)
-				return
-			}
-			t.Logf("Schedule: %s", sched)
-			t.Logf("Conflicts: %t", patchSched.ConflictsWith(sched))
-			t.Logf("Delay: %d", sched.Delay())
-		}
-
 	}
 }
 
 func TestScheduleApply(t *testing.T) {
-	jsonFile, _ := os.Open("test_sched3.json")
-	// Reading bytes from the file and unmarshalling the same to struct values
-	bytes, _ := ioutil.ReadAll(jsonFile)
-	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
-	type conf struct {
-		Schedules []JSONRelayState `json:"schedules"`
+	scheds, err := ReadScheduleFile("test_sched3.json")
+	if err != nil {
+		t.Error(err)
+		panic("TestReadSchedules: error reading schedule files")
 	}
-	c := conf{}
-	json.Unmarshal(bytes, &c)
-	scheds := []Schedule{}
-	for _, s := range c.Schedules {
-		sched, err := s.ToSchedule()
-		if err != nil {
-			t.Errorf("Error coverting to schedule object %s", err)
-			return
-		}
-		scheds = append(scheds, sched)
+	if len(scheds) == 0 {
+		t.Error("")
 	}
 	for i, s := range scheds {
 		for _, ss := range scheds[i+1:] {
@@ -171,27 +63,17 @@ func TestScheduleApply(t *testing.T) {
 			}
 		}
 	}
-	ok, cancel := make(chan interface{}, 10), make(chan interface{})
-	send := make(chan []byte, 10)
-	err := make(chan error, 10)
-	defer close(ok)
-	defer close(cancel)
-	defer close(send)
-	defer close(err)
-	go func(listen chan []byte) {
-		for msg := range listen {
-			t.Log(string(msg))
-		}
-	}(send)
+	// Send channel here is nil since we just want to log the tcp messages
+	// we may write more code to get the messages across TCP
+	ctx := &SchedCtx{Ok: make(chan interface{}, 1), Cancel: make(chan interface{}), Send: nil, Err: make(chan error, 10)}
 	for _, s := range scheds {
 		if s.Conflicts() == 0 {
-			task := s.ToTask(ElapsedSecondsNow())
-			go task.Apply(ok, cancel, send, err)
+			go Apply(s, ctx)
 		} else {
-			t.Logf("%s Schedule has %d conflicts", s, s.Conflicts())
+			t.Logf("%s has %d conflicts \n", s, s.Conflicts())
 		}
 	}
-	for okmsg := range ok {
-		t.Logf("end of a schedule.. %v", okmsg)
-	}
+	<-time.After(20 * time.Second)
+	t.Log("Now closing the context..")
+	ctx.Close()
 }
