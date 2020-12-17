@@ -32,11 +32,14 @@ type Schedule interface {
 // SignalCtx : since signals communicate on cancellation only
 type SignalCtx struct {
 	Cancel chan interface{}
+	once   sync.Once
 }
 
 // Close :Closes down the channels within
 func (sc *SignalCtx) Close() {
-	close(sc.Cancel)
+	sc.once.Do(func() {
+		close(sc.Cancel)
+	})
 }
 
 // SchedCtx : for async routines on schedules this is helpful as a flyweight object
@@ -71,11 +74,14 @@ func (schc *SchedCtx) Close() {
 // SchedLoopCtx : loops are often interrupted but not closed, this often indicates restarting the loop
 type SchedLoopCtx struct {
 	Interrupt chan interface{}
+	once      sync.Once
 }
 
 // Close :Closes down the channels within
 func (slc *SchedLoopCtx) Close() {
-	close(slc.Interrupt)
+	slc.once.Do(func() {
+		close(slc.Interrupt)
+	})
 }
 
 func sortTriggers(trg1, trg2 Trigger) (l, h Trigger, e error) {

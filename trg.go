@@ -96,21 +96,6 @@ func (tr *rlyStateTrg) FlipAllRelays() {
 	}
 }
 
-// // SendTCP : wires the trigger over TCP to sockets
-// func (tr *rlyStateTrg) SendTCP(serverip, port string) error {
-// 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", serverip, port))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer conn.Close()
-// 	data, _ := json.Marshal(tr)
-// 	_, err = conn.Write(data)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 // At : seconds since midnight at which the trigger becomes effective
 func (tr *rlyStateTrg) At() int {
 	return tr.at
