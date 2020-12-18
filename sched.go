@@ -56,11 +56,11 @@ func (schc *SchedCtx) Close() {
 	// safe closing all the channels only once
 	// https://go101.org/article/channel-closing.html
 	schc.once.Do(func() {
-		if schc.Ok != nil {
-			close(schc.Ok)
-		}
 		if schc.Cancel != nil {
 			close(schc.Cancel)
+		}
+		if schc.Ok != nil {
+			close(schc.Ok)
 		}
 		if schc.Send != nil {
 			close(schc.Send)
@@ -159,14 +159,12 @@ func Apply(sch Schedule, ctx *SchedCtx) {
 }
 
 // Loop : this shall apply the schedule infinetly till the schedule is running fine
-func Loop(sch Schedule, sigctx *SignalCtx, loopctx *SchedLoopCtx) (chan []byte, chan error) {
-	// this channnel communicates the ok from apply function
-	// The loop still does not indicate done unless ofcourse the done <-nil
-	schCtx := SchedCtx{Ok: make(chan interface{}, 1), Cancel: make(chan interface{}), Send: make(chan []byte, 10), Err: make(chan error, 10)}
-	defer schCtx.Close()
+func Loop(sch Schedule, sigctx *SignalCtx, loopctx *SchedLoopCtx, send chan []byte, errx chan error) {
 	go func() {
+		schCtx := &SchedCtx{Ok: make(chan interface{}, 1), Cancel: make(chan interface{}), Send: send, Err: errx}
+		defer schCtx.Close()
 		for {
-			Apply(sch, &schCtx)
+			Apply(sch, schCtx)
 			select {
 			case <-sigctx.Cancel:
 			case <-loopctx.Interrupt:
@@ -178,7 +176,7 @@ func Loop(sch Schedule, sigctx *SignalCtx, loopctx *SchedLoopCtx) (chan []byte, 
 			}
 		}
 	}()
-	return schCtx.Send, schCtx.Err
+	return
 }
 
 // JSONRelayState : relaystate but in json format
@@ -215,6 +213,8 @@ func (jrs *JSONRelayState) ToSchedule() (Schedule, error) {
 }
 
 // ReadScheduleFile : just so that we can read json schedule file, and get slice of schedules
+// we have also added some conflict detection in here
+// Call this from the client function to get schedules with their conflict numbers
 func ReadScheduleFile(file string) ([]Schedule, error) {
 	jsonFile, _ := os.Open(file)
 	// Reading bytes from the file and unmarshalling the same to struct values
@@ -229,12 +229,21 @@ func ReadScheduleFile(file string) ([]Schedule, error) {
 	c := conf{}
 	json.Unmarshal(bytes, &c)
 	scheds := []Schedule{}
+	// converting from json schedules to schedule object slice
 	for _, s := range c.Schedules {
 		sched, err := s.ToSchedule()
 		if err != nil {
 			return nil, err
 		}
 		scheds = append(scheds, sched)
+	}
+	// flagging conflicts
+	for i, s := range scheds {
+		for _, ss := range scheds[i+1:] {
+			if s.ConflictsWith(ss) {
+				ss.AddConflict()
+			}
+		}
 	}
 	return scheds, nil
 }

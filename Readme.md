@@ -1,4 +1,4 @@
-#### Clock schedules ;
+#### Clock schedules :
 ------------
 
 We need schedules that run on __24 hour cycles.__ Schedules that repeat themselves over and over once set for any day. A user would like to define the behaviour  of any logic of actuation, and that logic needs to loop over the `clock`. 
@@ -44,6 +44,8 @@ Lets assume a device wakes up / boots up at 20:30, considering the above case, t
 
 #### JSON Schedules :
 --------------
+
+It all starts here, basic schedules are picked up from __json files__  a `schedules` array attribute having objects in the below format are expected. `JSONRelayState` is the one schedule. It has ids of the relay that would be signalled, ON/OFF times as string, and `primary` bool attribute that indicates 
 
 ```json 
 {

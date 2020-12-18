@@ -1,8 +1,7 @@
 {
     "schedules": [
         {"on":"05:00 PM", "off":"12:00 PM","primary":true, "ids":["IN1","IN2","IN3","IN4"]},
-
-        {"on":"04:45 PM", "off":"06:24 PM","primary":false, "ids":["IN4"]},
-        {"on":"06:37 PM", "off":"06:35 PM","primary":false, "ids":["IN4"]}
+        {"on":"07:55 PM", "off":"07:45 PM","primary":false, "ids":["IN4"]}
+        
     ]
 }
