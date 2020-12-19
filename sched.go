@@ -115,68 +115,76 @@ func NewSchedule(trg1, trg2 Trigger, primary bool) (Schedule, error) {
 }
 
 // Apply : applies the schedule once for a cycle pre>state>post>state
-func Apply(sch Schedule, ctx *SchedCtx) {
-	if sch == nil {
-		ctx.Err <- fmt.Errorf("Schedule/Apply: Null schedule, cannot apply")
-		return
-	}
-	nr, fr, pre, post := sch.ToTask()
-	log.Debugf("Near: %s Far: %s Pre: %d Post: %d\n", nr, fr, pre, post)
-	if pre > 0 {
-		// this will work as expected even when pre=0, but the problem is it sill still allow the processor to jump to the next task
-		<-time.After(time.Duration(pre) * time.Duration(1*time.Second))
-	}
-	byt, e := json.Marshal(nr)
-	if e != nil { // state of the trigger is applied
-		ctx.Err <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
-		return
-	}
-	if ctx != nil && ctx.Send != nil {
-		ctx.Send <- byt
-	} else {
-		log.Debugf("TCP: %s", string(byt))
-	}
-
-	select {
-	// sleep duration is always a second extra than the sleep time
-	// so that incase the processor is fast enough this will still be in the next slot
-	case <-time.After(time.Duration(post+1) * time.Duration(1*time.Second)):
-		log.Info("End of post duration")
-		if byt, e = json.Marshal(fr); e != nil {
-			ctx.Err <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
+func Apply(sch Schedule, stop chan interface{}, send chan []byte, errx chan error) (func(), chan interface{}) {
+	ok := make(chan interface{}, 1)
+	return func() {
+		select {
+		case <-ok:
+			ok = make(chan interface{}, 1)
+			defer close(ok)
+		default:
+			// channel is not closed
+			defer close(ok)
+		}
+		if sch == nil {
+			errx <- fmt.Errorf("Schedule/Apply: Null schedule, cannot apply")
 			return
 		}
-		if ctx != nil && ctx.Send != nil {
-			ctx.Send <- byt
+		nr, fr, pre, post := sch.ToTask()
+		log.Debugf("Near: %s Far: %s Pre: %d Post: %d\n", nr, fr, pre, post)
+		if pre > 0 {
+			// this will work as expected even when pre=0, but the problem is it sill still allow the processor to jump to the next task
+			<-time.After(time.Duration(pre) * time.Duration(1*time.Second))
+		}
+		byt, e := json.Marshal(nr)
+		if e != nil { // state of the trigger is applied
+			errx <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
+			return
+		}
+		if send != nil {
+			send <- byt
 		} else {
 			log.Debugf("TCP: %s", string(byt))
 		}
-		ctx.Ok <- struct{}{}
-	case <-ctx.Cancel:
-		log.Warn("Task/Apply: Interruption\n")
-	}
-	return
+
+		select {
+		// sleep duration is always a second extra than the sleep time
+		// so that incase the processor is fast enough this will still be in the next slot
+		case <-time.After(time.Duration(post+1) * time.Duration(1*time.Second)):
+			log.Info("End of post duration")
+			if byt, e = json.Marshal(fr); e != nil {
+				errx <- fmt.Errorf("Schedule/Apply: Failed to marshall trigger data - %s", e)
+				return
+			}
+			if send != nil {
+				send <- byt
+			} else {
+				log.Debugf("TCP: %s", string(byt))
+			}
+			ok <- struct{}{}
+		case <-stop:
+			log.Warn("Task/Apply: Interruption\n")
+		}
+	}, ok
 }
 
 // Loop : this shall apply the schedule infinetly till the schedule is running fine
-func Loop(sch Schedule, sigctx *SignalCtx, loopctx *SchedLoopCtx, send chan []byte, errx chan error) {
-	go func() {
-		schCtx := &SchedCtx{Ok: make(chan interface{}, 1), Cancel: make(chan interface{}), Send: send, Err: errx}
-		defer schCtx.Close()
-		for {
-			Apply(sch, schCtx)
-			select {
-			case <-sigctx.Cancel:
-			case <-loopctx.Interrupt:
-				// Incase there's a signal interruption or from file change, the loop will have to quit its infinite nature
-				return
-			case <-schCtx.Ok:
-				// this is when the schedule has done applying for one cycle
-				// will go back to applying the next schedule for the then current time
-			}
+func Loop(sch Schedule, cancel, interrupt chan interface{}, send chan []byte, errx chan error) {
+	stop := make(chan interface{})
+	defer close(stop)
+	call, ok := Apply(sch, stop, send, errx)
+	for {
+		go call()
+		select {
+		case <-cancel:
+		case <-interrupt:
+			// Incase there's a signal interruption or from file change, the loop will have to quit its infinite nature
+			return
+		case <-ok:
+			// this is when the schedule has done applying for one cycle
+			// will go back to applying the next schedule for the then current time
 		}
-	}()
-	return
+	}
 }
 
 // JSONRelayState : relaystate but in json format

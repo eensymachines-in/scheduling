@@ -79,47 +79,52 @@ func TestScheduleApply(t *testing.T) {
 	if len(scheds) == 0 {
 		t.Error("")
 	}
+	stop := make(chan interface{})
+	send := make(chan []byte)
+	errx := make(chan error)
+	defer close(stop)
+	defer close(errx)
+	defer close(send)
 	// Send channel here is nil since we just want to log the tcp messages
 	// we may write more code to get the messages across TCP
-	ctx := &SchedCtx{Ok: make(chan interface{}, 1), Cancel: make(chan interface{}), Send: make(chan []byte, 10), Err: make(chan error, 10)}
-	defer ctx.Close()
 	for _, s := range scheds {
 		if s.Conflicts() == 0 {
-			go Apply(s, ctx)
+			call, _ := Apply(s, stop, send, errx)
+			go call()
 		} else {
 			t.Logf("%s has %d conflicts \n", s, s.Conflicts())
 		}
 	}
-	go listenOnSend(t, ctx.Err, ctx.Send, ctx.Cancel)
+	go listenOnSend(t, errx, send, stop)
 	<-time.After(60 * time.Minute)
 	t.Log("Now closing the context..")
 	// this closes the schedule context and hence all the tasks
 }
 
-func TestScheduleLoop(t *testing.T) {
-	scheds, err := ReadScheduleFile("test_sched3.json")
-	if err != nil {
-		t.Error(err)
-		panic("TestReadSchedules: error reading schedule files")
-	}
-	if len(scheds) == 0 {
-		t.Error("")
-	}
-	sigctx := SignalCtx{Cancel: make(chan interface{})}
-	loopctx := SchedLoopCtx{Interrupt: make(chan interface{})}
-	send := make(chan []byte, 10)
-	errx := make(chan error, 10)
-	for _, s := range scheds {
-		if s.Conflicts() == 0 {
-			go Loop(s, &sigctx, &loopctx, send, errx)
-		} else {
-			t.Logf("%s has %d conflicts \n", s, s.Conflicts())
-		}
-	}
-	go listenOnSend(t, errx, send, sigctx.Cancel)
-	<-time.After(60 * time.Minute)
-	t.Log("Now closing the context..")
-	loopctx.Close()
-	sigctx.Close()
-	// this closes the schedule context and hence all the tasks
-}
+// func TestScheduleLoop(t *testing.T) {
+// 	scheds, err := ReadScheduleFile("test_sched3.json")
+// 	if err != nil {
+// 		t.Error(err)
+// 		panic("TestReadSchedules: error reading schedule files")
+// 	}
+// 	if len(scheds) == 0 {
+// 		t.Error("")
+// 	}
+// 	sigctx := SignalCtx{Cancel: make(chan interface{})}
+// 	loopctx := SchedLoopCtx{Interrupt: make(chan interface{})}
+// 	send := make(chan []byte, 10)
+// 	errx := make(chan error, 10)
+// 	for _, s := range scheds {
+// 		if s.Conflicts() == 0 {
+// 			go Loop(s, &sigctx, &loopctx, send, errx)
+// 		} else {
+// 			t.Logf("%s has %d conflicts \n", s, s.Conflicts())
+// 		}
+// 	}
+// 	go listenOnSend(t, errx, send, sigctx.Cancel)
+// 	<-time.After(60 * time.Minute)
+// 	t.Log("Now closing the context..")
+// 	loopctx.Close()
+// 	sigctx.Close()
+// 	// this closes the schedule context and hence all the tasks
+// }
