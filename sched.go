@@ -172,8 +172,8 @@ func Apply(sch Schedule, stop chan interface{}, send chan []byte, errx chan erro
 func Loop(sch Schedule, cancel, interrupt chan interface{}, send chan []byte, errx chan error) {
 	stop := make(chan interface{})
 	defer close(stop)
-	call, ok := Apply(sch, stop, send, errx)
 	for {
+		call, ok := Apply(sch, stop, send, errx)
 		go call()
 		select {
 		case <-cancel:
