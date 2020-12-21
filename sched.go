@@ -118,14 +118,7 @@ func NewSchedule(trg1, trg2 Trigger, primary bool) (Schedule, error) {
 func Apply(sch Schedule, stop chan interface{}, send chan []byte, errx chan error) (func(), chan interface{}) {
 	ok := make(chan interface{}, 1)
 	return func() {
-		select {
-		case <-ok:
-			ok = make(chan interface{}, 1)
-			defer close(ok)
-		default:
-			// channel is not closed
-			defer close(ok)
-		}
+		defer close(ok)
 		if sch == nil {
 			errx <- fmt.Errorf("Schedule/Apply: Null schedule, cannot apply")
 			return

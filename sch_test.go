@@ -126,6 +126,6 @@ func TestScheduleLoop(t *testing.T) {
 		}
 	}
 	go listenOnSend(t, errx, send, stop)
-	<-time.After(60 * time.Minute)
-	t.Log("Now closing the context..")
+	<-time.After(9999 * time.Second)
+	t.Log("Now closing the test..")
 }
