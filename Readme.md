@@ -56,6 +56,7 @@ type JSONRelayState struct {
 	Primary bool     `json:"primary"`
 }
 ```
+
 schedules in JSON look somewhat like this.
 ```json 
 {
@@ -94,3 +95,29 @@ for _, s := range scheds {
     }
 }
 ```
+
+#### Applying schedules for one cycle:
+---------
+
+While schedules are meant to be applied in a loop till there is a interruption signal, they are designed to be applied for one complete cycle. Between 2 states of a relay there is a sleep routine. If the current time is beyond the schedule effect then, it demands an extra sleep routine as well.
+
+Lets understand this from an example
+
+- 06:30 AM to 06:30 PM Primary, current time is 17:30 : here state of 06:30AM is applied, schedule sleeps for 12 hours, and then applies state of 06:30PM
+- 06:30 AM to 06:30 PM Primary, current time is 19:30 : here state of 06:30PM is applied, schedule sleeps till 06:30AM, and then applies state of 06:30AM
+- 04:30PM to 05:30PM Patch, current time is 16:35, state at 04:30PM is applied and sleeps till 05:30 and then applies its state
+- 04:30PM to 05:30PM Patch, current time is 17:35, No state is applied, sleeps till 04:30 next day, then applies its state, sleeps for 1 hour and then applies 05:30 state
+
+There are 2 types of schedules and each behaves distinctly depending on where the current time is when applied. Primary schedules are considered to be cyclic while patch schedules are effective only within a time zone.
+
+```go 
+stop := make(chan interface{})
+defer close(stop)
+send := make(chan []byte,10)
+defer close(send)
+errx := make(chan error,10)
+defer close(errx)
+call, ok := Apply(sch, stop, send, errx)
+go call()
+```
+To Apply a schedule all what you need to do is pass the schedule to the `Apply` function and run it as a go-routine
