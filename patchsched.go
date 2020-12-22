@@ -9,7 +9,7 @@ func (pas *patchSchedule) ToTask() (Trigger, Trigger, int, int) {
 	var nr, fr Trigger
 	// When its a patch schedule pre sleep is contextual as well.
 	pre := pas.Delay()
-	post := 0
+	post := 1 //in all cases we want the patch schedule to be applied after the primary
 	// Patch schedules are not circular
 	// They allow pre sleep and are effective only between the triggers from top to bottom
 	// so for all the cases the near trigger is the lower and the far one is the higher
