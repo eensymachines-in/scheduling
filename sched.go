@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -27,61 +26,6 @@ type Schedule interface {
 	AddConflict() Schedule
 	Close()
 	ToTask() (Trigger, Trigger, int, int)
-}
-
-// SignalCtx : since signals communicate on cancellation only
-type SignalCtx struct {
-	Cancel chan interface{}
-	once   sync.Once
-}
-
-// Close :Closes down the channels within
-func (sc *SignalCtx) Close() {
-	sc.once.Do(func() {
-		close(sc.Cancel)
-	})
-}
-
-// SchedCtx : for async routines on schedules this is helpful as a flyweight object
-type SchedCtx struct {
-	Ok     chan interface{}
-	Cancel chan interface{}
-	Send   chan []byte
-	Err    chan error
-	once   sync.Once
-}
-
-// Close :Closes down the channels within
-func (schc *SchedCtx) Close() {
-	// safe closing all the channels only once
-	// https://go101.org/article/channel-closing.html
-	schc.once.Do(func() {
-		if schc.Cancel != nil {
-			close(schc.Cancel)
-		}
-		if schc.Ok != nil {
-			close(schc.Ok)
-		}
-		if schc.Send != nil {
-			close(schc.Send)
-		}
-		if schc.Err != nil {
-			close(schc.Err)
-		}
-	})
-}
-
-// SchedLoopCtx : loops are often interrupted but not closed, this often indicates restarting the loop
-type SchedLoopCtx struct {
-	Interrupt chan interface{}
-	once      sync.Once
-}
-
-// Close :Closes down the channels within
-func (slc *SchedLoopCtx) Close() {
-	slc.once.Do(func() {
-		close(slc.Interrupt)
-	})
 }
 
 func sortTriggers(trg1, trg2 Trigger) (l, h Trigger, e error) {

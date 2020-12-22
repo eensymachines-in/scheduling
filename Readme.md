@@ -46,14 +46,51 @@ Lets assume a device wakes up / boots up at 20:30, considering the above case, t
 --------------
 
 It all starts here, basic schedules are picked up from __json files__  a `schedules` array attribute having objects in the below format are expected. `JSONRelayState` is the one schedule. It has ids of the relay that would be signalled, ON/OFF times as string, and `primary` bool attribute that indicates 
+the type of schedule. If not primary the schedule is regarded as `patch`
 
+```go
+type JSONRelayState struct {
+	ON      string   `json:"on"`
+	OFF     string   `json:"off"`
+	IDs     []string `json:"ids"`
+	Primary bool     `json:"primary"`
+}
+```
+schedules in JSON look somewhat like this.
 ```json 
 {
     "schedules": [
         {"on":"05:00 PM", "off":"12:00 PM","primary":true, "ids":["IN1","IN2","IN3","IN4"]},
-
         {"on":"04:45 PM", "off":"06:24 PM","primary":false, "ids":["IN4"]},
         {"on":"06:37 PM", "off":"06:35 PM","primary":false, "ids":["IN4"]}
     ]
+}
+```
+#### Reading JSON schedules in :
+--------------
+
+We then need a function that would pick such json schedules and check/mark them for conflicts they have.
+Conflicting schedules are often neglected and only those with no conflicts are spawned / Looped
+
+```go
+scheds, e := scheduling.ReadScheduleFile("path/to/file.json")
+if e != nil {
+    log.Error(e)
+    panic("Failed to read schedule file, check json and retry")
+}
+```
+
+#### Starting schedules as routines:
+---------
+
+Once you have a slice of schedules, all what remains to start is the schedules in a loop. Check for conflicts, if no conflicts the `Loop` function can be used to spawn new schedules.
+
+```go
+for _, s := range scheds {
+    if s.Conflicts() == 0 {
+        go scheduling.Loop(s, cancel, interrupt, send, errx)
+    } else {
+        log.Warnf("%s has %d conflicts \n", s, s.Conflicts())
+    }
 }
 ```
