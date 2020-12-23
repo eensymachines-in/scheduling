@@ -30,6 +30,7 @@ func (pas *patchSchedule) ToTask() (Trigger, Trigger, int, int) {
 	return nr, fr, pre, post
 }
 
+// Please be ware here another cannot be a primary schedule
 func (pas *patchSchedule) ConflictsWith(another Schedule) bool {
 	// Here schedules with same time slot (subset, overlaps, coincide) cannot have the same relays
 	// if they have disjoint relays to work on.. then all of the above is allowed
