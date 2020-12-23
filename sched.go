@@ -123,6 +123,30 @@ func Loop(sch Schedule, cancel, interrupt chan interface{}, send chan []byte, er
 		}
 	}
 }
+func overlapsWith(left, right Schedule) (bool, bool, bool) {
+	var outside, inside, overlap bool
+	// Midpoints are distance of the half time since midnight for any schedule
+	mdpt1, mdpt2 := left.Midpoint(), right.Midpoint()
+	// half duration of each schedule
+	hfdur1, hfdur2 := left.Duration()/2, right.Duration()/2
+	// getting the absolute of the midpoint distance
+	mdptdis := mdpt1 - mdpt2
+	if mdptdis < 0 {
+		mdptdis = -mdptdis
+	}
+	// Getting the larger of the 2 schedules
+	var min, max int
+	if hfdur1 <= hfdur2 {
+		min, max = hfdur1, hfdur2
+	} else {
+		min, max = hfdur2, hfdur1
+	}
+	if outside, inside = (mdptdis > (hfdur1 + hfdur2)), ((mdptdis + min) < max); outside || inside {
+		overlap = false
+	}
+	overlap = true
+	return outside, inside, overlap
+}
 
 // JSONRelayState : relaystate but in json format
 // ================================== Json Relay state is for file reads ============================

@@ -9,7 +9,7 @@ func (pas *patchSchedule) ToTask() (Trigger, Trigger, int, int) {
 	var nr, fr Trigger
 	// When its a patch schedule pre sleep is contextual as well.
 	pre := pas.Delay()
-	post := 1 //in all cases we want the patch schedule to be applied after the primary
+	post := 0
 	// Patch schedules are not circular
 	// They allow pre sleep and are effective only between the triggers from top to bottom
 	// so for all the cases the near trigger is the lower and the far one is the higher
@@ -34,7 +34,11 @@ func (pas *patchSchedule) ConflictsWith(another Schedule) bool {
 	// Here schedules with same time slot (subset, overlaps, coincide) cannot have the same relays
 	// if they have disjoint relays to work on.. then all of the above is allowed
 	// for patch schedule, it cannot overlap / coincide with primary schedule
-	if pas.overlapsWith(another) {
+	_, inside, overlap := overlapsWith(pas, another)
+	if inside {
+		another.AddDelay(pas.Delay())
+	}
+	if overlap {
 		_, ok := another.(*patchSchedule)
 		if ok {
 			// patch schedule when being assesed with othe patch schedule ..

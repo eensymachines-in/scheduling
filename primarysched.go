@@ -73,36 +73,6 @@ func (ps *primarySched) ToTask() (Trigger, Trigger, int, int) {
 	return nr, fr, pre, post
 }
 
-func (ps *primarySched) overlapsWith(another Schedule) bool {
-	// Midpoints are distance of the half time since midnight for any schedule
-	mdpt1, mdpt2 := ps.Midpoint(), another.Midpoint()
-	// half duration of each schedule
-	hfdur1, hfdur2 := ps.Duration()/2, another.Duration()/2
-	// getting the absolute of the midpoint distance
-	mdptdis := mdpt1 - mdpt2
-	if mdptdis < 0 {
-		mdptdis = -mdptdis
-	}
-	// Getting the larger of the 2 schedules
-	var min, max int
-	if hfdur1 <= hfdur2 {
-		min, max = hfdur1, hfdur2
-	} else {
-		min, max = hfdur2, hfdur1
-	}
-	if outside, inside := (mdptdis > (hfdur1 + hfdur2)), ((mdptdis + min) < max); outside || inside {
-		// case when the schedules are clearing and not interferring with one another
-		// either one schedule is inside the other or on one side
-		if inside {
-			// Here we would want to adjust the preceedence too.
-			another.AddDelay(ps.Delay())
-		}
-		return false
-	}
-	// all other cases the schedules are either partially/exactly overlapping
-	return true
-}
-
 // ConflictsWith : checks to see partial overlapping of schedules
 func (ps *primarySched) ConflictsWith(another Schedule) bool {
 	_, ok := another.(*primarySched)
@@ -111,5 +81,10 @@ func (ps *primarySched) ConflictsWith(another Schedule) bool {
 		// overlaps are checked for circular and non-cicrular schedule
 		return true
 	}
-	return ps.overlapsWith(another)
+	outside, inside, overlap := overlapsWith(ps, another)
+	if outside || inside {
+		// When its the primary schedule the patch schedule will always be given proceedence
+		another.AddDelay(ps.Delay())
+	}
+	return overlap
 }
