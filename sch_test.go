@@ -129,3 +129,17 @@ func TestScheduleLoop(t *testing.T) {
 	<-time.After(9999 * time.Second)
 	t.Log("Now closing the test..")
 }
+
+func TestOverlappingSchedules(t *testing.T) {
+	scheds, err := ReadScheduleFile("test_sched3.json")
+	if err != nil {
+		t.Error(err)
+		panic("TestReadSchedules: error reading schedule files")
+	}
+	for i, s := range scheds {
+		for _, ss := range scheds[i+1:] {
+			ou, in, ov := overlapsWith(s, ss)
+			t.Logf("outside: %t, inside: %t, overlap: %t", ou, in, ov)
+		}
+	}
+}

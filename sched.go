@@ -123,6 +123,8 @@ func Loop(sch Schedule, cancel, interrupt chan interface{}, send chan []byte, er
 		}
 	}
 }
+
+// overlapsWith : is the function for basis of identifying the conflicts in any 2 schedules
 func overlapsWith(left, right Schedule) (bool, bool, bool) {
 	var outside, inside, overlap bool
 	// Midpoints are distance of the half time since midnight for any schedule
@@ -143,8 +145,9 @@ func overlapsWith(left, right Schedule) (bool, bool, bool) {
 	}
 	if outside, inside = (mdptdis > (hfdur1 + hfdur2)), ((mdptdis + min) < max); outside || inside {
 		overlap = false
+	} else {
+		overlap = true
 	}
-	overlap = true
 	return outside, inside, overlap
 }
 
