@@ -45,3 +45,11 @@ func ElapsedSecondsNow() int {
 	hr, min, sec := time.Now().Clock()
 	return (hr * 3600) + (min * 60) + sec
 }
+
+// DisplayDateNow : date and the time suitable for displays
+// Like the blogs do it 28-Mar 1982 01:00:00
+func DisplayDateNow() string {
+	yr, mn, dy := time.Now().Date()
+	hr, min, sec := time.Now().Clock()
+	return fmt.Sprintf("%d-%.3s %d %02d:%02d:%02d", dy, mn, yr, hr, min, sec)
+}
