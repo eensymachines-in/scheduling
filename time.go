@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -47,9 +48,9 @@ func ElapsedSecondsNow() int {
 }
 
 // DisplayDateNow : date and the time suitable for displays
-// Like the blogs do it 28-Mar 1982 01:00:00
+// Like the blogs do it 28-Mar'82 01:00:00
 func DisplayDateNow() string {
 	yr, mn, dy := time.Now().Date()
 	hr, min, sec := time.Now().Clock()
-	return fmt.Sprintf("%d-%.3s %d %02d:%02d:%02d", dy, mn, yr, hr, min, sec)
+	return fmt.Sprintf("%d-%.3s'%s %02d:%02d:%02d", dy, mn, strconv.Itoa(yr)[2:], hr, min, sec)
 }
