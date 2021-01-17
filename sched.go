@@ -63,6 +63,12 @@ func Apply(sch Schedule, stop chan interface{}, send chan []byte, errx chan erro
 	ok := make(chan interface{}, 1)
 	return func() {
 		defer close(ok)
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error("Apply: System interruption and premature closure..")
+				log.Error(r)
+			}
+		}()
 		if sch == nil {
 			errx <- fmt.Errorf("Schedule/Apply: Null schedule, cannot apply")
 			return
@@ -79,6 +85,7 @@ func Apply(sch Schedule, stop chan interface{}, send chan []byte, errx chan erro
 			return
 		}
 		if send != nil {
+			// Send channel could be already closed by the time we get here ..
 			send <- byt
 		} else {
 			log.Debugf("TCP: %s", string(byt))
