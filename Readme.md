@@ -39,7 +39,7 @@ _Kindly read that carefully since there lies the subtle difference between prima
 ##### Secondary schedules / patch schedules :
 -----------
 
-They are seen more like exceptions to the above primary schedules, where beyond their said bracket they do not change the state. `They aren't cyclic`
+They are seen more like exceptions/patches to the above primary schedules, where beyond their said bracket they do not change the state. `They aren't cyclic`
 Lets assume a device wakes up / boots up at 20:30, considering the above case, the exception of 17:30-18:30 is not applicable here, so the device sees the time between 20:30-17:30(next day) as the sleep time. __Hence unless the device finds itself in the middle of that exception time range it would not take any effect.__ 
 
 #### JSON Schedules :
@@ -47,15 +47,6 @@ Lets assume a device wakes up / boots up at 20:30, considering the above case, t
 
 It all starts here, basic schedules are picked up from __json files__  a `schedules` array attribute having objects in the below format are expected. `JSONRelayState` is the one schedule. It has ids of the relay that would be signalled, ON/OFF times as string, and `primary` bool attribute that indicates 
 the type of schedule. If not primary the schedule is regarded as `patch`
-
-```go
-type JSONRelayState struct {
-	ON      string   `json:"on"`
-	OFF     string   `json:"off"`
-	IDs     []string `json:"ids"`
-	Primary bool     `json:"primary"`
-}
-```
 
 schedules in JSON look somewhat like this.
 ```json 
@@ -67,6 +58,20 @@ schedules in JSON look somewhat like this.
     ]
 }
 ```
+```go
+type JSONRelayState struct {
+	ON      string   `json:"on"`
+	OFF     string   `json:"off"`
+	IDs     []string `json:"ids"`
+	Primary bool     `json:"primary"`
+}
+
+func (jrs *JSONRelayState) ToSchedule() (Schedule, error)
+
+```
+`JSONRelayState` read-in from the json file can be converted to a schedule with a simple method. This can make the relay states correctly and pack them into 2 trigger schedule.
+A schedule is nothing but a set of 2 triggers, one - ON other OFF each associated with relay pins. A single schedule can be applied to one or many relay pins at a time.
+
 #### Reading JSON schedules in :
 --------------
 
@@ -99,6 +104,28 @@ for _, s := range scheds {
 #### Applying schedules for one cycle:
 ---------
 
+```go
+
+func Apply(sch Schedule, stop chan interface{}, send chan []byte, errx chan error) (func(), chan interface{}) 
+
+// sch  : Schedule object that needs to be applied
+// stop : close this channel to indicate if the Apply function call needs to abort
+// send : status of the application is communicated over this channel
+// errx : any error applying the schedule will be on this channel
+
+// func() : callback to start the application 
+// ok chan interface{} : when this channel is closed it indicates the schedule has been successfuly applied once
+
+stop := make(chan interface{})
+defer close(stop)
+send := make(chan []byte,10)
+defer close(send)
+errx := make(chan error,10)
+defer close(errx)
+call, ok := Apply(sch, stop, send, errx)
+go call()
+```
+
 While schedules are meant to be applied in a loop till there is a interruption signal, they are designed to be applied for one complete cycle. Between 2 states of a relay there is a sleep routine. If the current time is beyond the schedule effect then, it demands an extra sleep routine as well.
 
 Lets understand this from an example
@@ -110,14 +137,4 @@ Lets understand this from an example
 
 There are 2 types of schedules and each behaves distinctly depending on where the current time is when applied. Primary schedules are considered to be cyclic while patch schedules are effective only within a time zone.
 
-```go 
-stop := make(chan interface{})
-defer close(stop)
-send := make(chan []byte,10)
-defer close(send)
-errx := make(chan error,10)
-defer close(errx)
-call, ok := Apply(sch, stop, send, errx)
-go call()
-```
 To Apply a schedule all what you need to do is pass the schedule to the `Apply` function and run it as a go-routine

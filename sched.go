@@ -47,6 +47,8 @@ func NewSchedule(trg1, trg2 Trigger, primary bool) (Schedule, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Intersection of the triggers denote the common relays it controls
+	// Coincidence of the triggers denote the timing of the trigger
 	if !trg1.Intersects(trg2, true) || trg1.Coincides(trg2) {
 		// When triggers are paired in a schedule they have to be intersecting and not coincident
 		return nil, fmt.Errorf("%s-%s Triggers for the schedule are either not exactly intersecting or are coinciding", trg1, trg2)
