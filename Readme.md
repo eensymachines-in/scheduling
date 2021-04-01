@@ -1,18 +1,16 @@
 #### Clock schedules :
 ------------
 
-We need schedules that run on __24 hour cycles.__ Schedules that repeat themselves over and over once set for any day. A user would like to define the behaviour  of any logic of actuation, and that logic needs to loop over the `clock`. 
+Clockwork automation has many applications in IoT products. Typically a user would want to set a clock to certain tasks and expect the tasks to repeat indefinetly. - or atleast until the user can intervene and change the clock configuration. We need schedules that run on __24 hour cycles.__ Schedules that repeat themselves in a loop, once set for any day. User shall be able to change such a _clock_ and such the new clock is in effect the device follow the same.
 
-Examples 
+##### Examples
 
-- Lights turned ON between 18:30-06:30 and OFF from 06:30-18:30
-- Aquarium filter runs 6 hours a day between 13:00-19:00 and OFF throughout the rest of the day.
+- Domestic lights turned ON between `18:30-06:30` and OFF from `06:30-18:30`
+- Aquarium filter runs 6 hours a day between `13:00-19:00` and OFF throughout the rest of the day.
 
-At any given point in the day the device wakes-up/boots it should __identify based on the current time, of what state it has to be in__ and then set up the cyclic sleep and change of states. 
+At any given point in the day the device wakes-up/boots it should __identify based on the current time, of what state it has to be in__ and then set up the cyclic sleep and change of states. An example of domestic illumination control - Lets assume the device wakes up / boots at 16:30, it should then turn the lights OFF, sleep for 2 hours (Since the lights are to be switched on at 18:30 for 12 hours ahead.) and then flip the state. and sleep again till 06:30 _next morning_. The cyclic nature of the schedule allows us to let the algorithm to be agnostic of the date and day. 
 
-For the light switching example - Lets assume the device wakes up / boots at 16:30, it should then turn the lights OFF, sleep for 2 hours and then flip the state. and sleep again till 06:30 _next morning_. The cyclic nature of the schedule allows us to let the algorithm to be agnostic of the date.
-
-_Schedules such as these are driven by the seconds elapsed ahead of the midnight, irrespective of the date/day._
+> Schedules such as these are driven by the seconds elapsed ahead of the midnight, irrespective of the date/day
 
 #### Seconds since midnight :
 -------------
