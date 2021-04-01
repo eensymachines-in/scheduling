@@ -17,7 +17,7 @@ At any given point in the day the device wakes-up/boots it should __identify bas
 
 A day comprises of `86400` seconds, so any point in the day lineraly can be represented using elapsed since midnight. It is much convinient to define sleep times and also calculate overlaps for time ranges if time is represented using the same phenomenon. Though for user-level representation its much legible to keep it human readable string format. 
 
-This module include functions that let you interconvert the 2 formats of time. 
+__This module include functions that let you interconvert the 2 formats of time.__ 
 
 #### 2 types of schedules :
 -------------
@@ -26,19 +26,21 @@ Here is an example from domain.
 
 > A residential society has its GBM that has decided they need lights ON 12 hours a day and nothing more than that.- say 18:30-06:30. While respecting the directions of the GBM, there are a few floors who would need the lights to be on from 17:30, an extra hour. Which is understandable when there are senior citizens, who would need that extra ON time.
 
-As you can notice from the above requirement, the exceptional ON  time is not cyclic. Beyond 17:30-18:30 it has no effect on the state of the lights. While the wider directive which affects 12 hours, has a implication beyond 18:30 as well, or before 06:30 
+As you can notice from the above requirement, the exceptional ON  time is not cyclic. `Beyond 17:30-18:30` _it has no effect on the state of the lights._ While the wider directive which affects 12 hours, has a implication beyond 18:30 as well, or before 06:30.
+
+Schedules define a slot in which a state of the lights is explicit, while anything outside the slot is considered reverse implicitly. Exceptions on the other hand though are confined to their effect within the defined slot. Exceptions are also schedules, just that they operate _typically_.
 
 ##### Primary schedules / cyclic schedules :
 -----------
 
-They are cyclic and imply the state over 24 hour clock. `06:30(OFF)-18:30(ON)` implies 18:30 to 06:30 the lights are ON, while ofcourse maintaining  that between those 12 hours, the lights are OFF. Lets for a moment think the device wakes up at 20:30, it will then `turn ON the lights` and sleep till 06:30 the next morning. Kindly read that carefully since there lies the subtle difference between primary and secondary schedules.
+`They are cyclic` and imply the state over 24 hour clock. `06:30(OFF)-18:30(ON)` implies 18:30 to 06:30 the lights are ON, while ofcourse maintaining that between those 12 hours, the lights are OFF. Lets for a moment think the device wakes up at 20:30, it will then `turn ON the lights` and sleep till 06:30 the next morning. 
+_Kindly read that carefully since there lies the subtle difference between primary and secondary schedules._
 
 ##### Secondary schedules / patch schedules :
 -----------
 
-They are seen more like exceptions to the above primary schedules, where beyond their said bracket they do not change the state. 
-Lets assume a device wakes up / boots up at 20:30, considering the above case, the exception of 17:30-18:30 is not applicable here, so the device sees the time between 20:30-17:30(next day) as the sleep time. So unless the device finds itself in the middle of that exception time range it would not take any effect. 
-
+They are seen more like exceptions to the above primary schedules, where beyond their said bracket they do not change the state. `They aren't cyclic`
+Lets assume a device wakes up / boots up at 20:30, considering the above case, the exception of 17:30-18:30 is not applicable here, so the device sees the time between 20:30-17:30(next day) as the sleep time. __Hence unless the device finds itself in the middle of that exception time range it would not take any effect.__ 
 
 #### JSON Schedules :
 --------------
