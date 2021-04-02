@@ -101,7 +101,7 @@ for _, s := range scheds {
 }
 ```
 
-#### Applying schedules for one cycle:
+#### Applying schedules (for one cycle):
 ---------
 
 ```go

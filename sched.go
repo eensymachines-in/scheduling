@@ -164,10 +164,10 @@ func overlapsWith(left, right Schedule) (bool, bool, bool) {
 // ================================== Json Relay state is for file reads ============================
 // Making a relay state from a json file
 type JSONRelayState struct {
-	ON      string   `json:"on"`
-	OFF     string   `json:"off"`
-	IDs     []string `json:"ids"`
-	Primary bool     `json:"primary"`
+	ON      string   `json:"on" bson:"on"`
+	OFF     string   `json:"off" bson:"off"`
+	IDs     []string `json:"ids" bson:"ids"`
+	Primary bool     `json:"primary" bson:"primary"`
 }
 
 // ToSchedule : reads from json and pumps up a schedule
