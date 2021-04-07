@@ -193,6 +193,33 @@ func (jrs *JSONRelayState) ToSchedule() (Schedule, error) {
 
 }
 
+// SliceOfJSONRelayState : we are just encapsulating the slices to extend functions over it
+type SliceOfJSONRelayState []JSONRelayState
+
+// From a SliceOfJSONRelayState to a slice of schedules, this not only converts but also marks the schedules with conflicts
+// Used when reading schedules from files or API payloads
+func (sofjrs SliceOfJSONRelayState) ToSchedules(scheds *[]Schedule) error {
+	result := []Schedule{}
+	// converting from json schedules to schedule object slice
+	for _, s := range sofjrs {
+		sched, err := s.ToSchedule()
+		if err != nil {
+			return err
+		}
+		result = append(result, sched)
+	}
+	// flagging conflicts
+	for i, s := range result {
+		for _, ss := range result[i+1:] {
+			if s.ConflictsWith(ss) {
+				ss.AddConflict()
+			}
+		}
+	}
+	*scheds = result
+	return nil
+}
+
 // ReadScheduleFile : just so that we can read json schedule file, and get slice of schedules
 // we have also added some conflict detection in here
 // Call this from the client function to get schedules with their conflict numbers
@@ -205,26 +232,31 @@ func ReadScheduleFile(file string) ([]Schedule, error) {
 	}
 	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
 	type conf struct {
-		Schedules []JSONRelayState `json:"schedules"`
+		Schedules SliceOfJSONRelayState `json:"schedules"`
 	}
 	c := conf{}
 	json.Unmarshal(bytes, &c)
 	scheds := []Schedule{}
+	if err := c.Schedules.ToSchedules(&scheds); err != nil {
+		return nil, err
+	}
+	// +++++++++++++++ drop this when you are done testing
 	// converting from json schedules to schedule object slice
-	for _, s := range c.Schedules {
-		sched, err := s.ToSchedule()
-		if err != nil {
-			return nil, err
-		}
-		scheds = append(scheds, sched)
-	}
-	// flagging conflicts
-	for i, s := range scheds {
-		for _, ss := range scheds[i+1:] {
-			if s.ConflictsWith(ss) {
-				ss.AddConflict()
-			}
-		}
-	}
+	// for _, s := range c.Schedules {
+	// 	sched, err := s.ToSchedule()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	scheds = append(scheds, sched)
+	// }
+	// // flagging conflicts
+	// for i, s := range scheds {
+	// 	for _, ss := range scheds[i+1:] {
+	// 		if s.ConflictsWith(ss) {
+	// 			ss.AddConflict()
+	// 		}
+	// 	}
+	// }
+	// ++++++++++++++++++++++
 	return scheds, nil
 }

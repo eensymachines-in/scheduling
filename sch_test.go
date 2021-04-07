@@ -8,6 +8,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -141,5 +142,31 @@ func TestOverlappingSchedules(t *testing.T) {
 			ou, in, ov := overlapsWith(s, ss)
 			t.Logf("outside: %t, inside: %t, overlap: %t", ou, in, ov)
 		}
+	}
+}
+
+// TestToSchedules : will test conversion of slice of json relay state to schedules
+func TestToSchedules(t *testing.T) {
+	jrs := SliceOfJSONRelayState{
+		{ON: "06:30 PM", OFF: "06:30 AM", IDs: []string{"IN1", "IN2"}, Primary: true},
+		{ON: "04:30 PM", OFF: "06:29 PM", IDs: []string{"IN1"}, Primary: false},
+	}
+	scheds := []Schedule{}
+	err := jrs.ToSchedules(&scheds)
+	assert.Nil(t, err, "Error converting to a slice of Schedules")
+	if err != nil {
+		return
+	}
+	for _, s := range scheds {
+		t.Log(s)
+		t.Log(s.Conflicts())
+	}
+	scheds, err = ReadScheduleFile("./test_sched2.json")
+	assert.Nil(t, err, "Unexpected error reading schedules from file")
+	if err != nil {
+		return
+	}
+	for _, s := range scheds {
+		t.Logf("%v:%d", s, s.Conflicts())
 	}
 }
