@@ -220,6 +220,24 @@ func (sofjrs SliceOfJSONRelayState) ToSchedules(scheds *[]Schedule) error {
 	return nil
 }
 
+// WriteScheduleFile : can overwrite the schedule file with new slice of json relay state
+func WriteScheduleFile(file string, sojrs SliceOfJSONRelayState) error {
+	contents := struct {
+		Schedules SliceOfJSONRelayState `json:"schedules"`
+	}{
+		Schedules: sojrs,
+	}
+	fileContent, err := json.MarshalIndent(contents, "", "	")
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(file, fileContent, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ReadScheduleFile : just so that we can read json schedule file, and get slice of schedules
 // we have also added some conflict detection in here
 // Call this from the client function to get schedules with their conflict numbers
@@ -240,23 +258,5 @@ func ReadScheduleFile(file string) ([]Schedule, error) {
 	if err := c.Schedules.ToSchedules(&scheds); err != nil {
 		return nil, err
 	}
-	// +++++++++++++++ drop this when you are done testing
-	// converting from json schedules to schedule object slice
-	// for _, s := range c.Schedules {
-	// 	sched, err := s.ToSchedule()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	scheds = append(scheds, sched)
-	// }
-	// // flagging conflicts
-	// for i, s := range scheds {
-	// 	for _, ss := range scheds[i+1:] {
-	// 		if s.ConflictsWith(ss) {
-	// 			ss.AddConflict()
-	// 		}
-	// 	}
-	// }
-	// ++++++++++++++++++++++
 	return scheds, nil
 }

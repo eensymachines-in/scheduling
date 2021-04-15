@@ -32,6 +32,17 @@ func TestReadSchedules(t *testing.T) {
 		t.Logf("%s\n", s)
 	}
 }
+func TestWriteSchedules(t *testing.T) {
+	sojrs := SliceOfJSONRelayState{
+		{ON: "06:30 PM", OFF: "06:30 AM", IDs: []string{"IN1", "IN2"}, Primary: true},
+		{ON: "04:30 PM", OFF: "06:13 PM", IDs: []string{"IN1"}, Primary: false},
+	}
+	err := WriteScheduleFile("test_sched.json", sojrs)
+	if err != nil {
+		panic(err)
+	}
+	return
+}
 
 func TestScheduleConflicts(t *testing.T) {
 	scheds, err := ReadScheduleFile("test_sched3.json")
