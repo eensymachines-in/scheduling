@@ -47,6 +47,8 @@ func NewSchedule(trg1, trg2 Trigger, primary bool) (Schedule, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Intersection of the triggers denote the common relays it controls
+	// Coincidence of the triggers denote the timing of the trigger
 	if !trg1.Intersects(trg2, true) || trg1.Coincides(trg2) {
 		// When triggers are paired in a schedule they have to be intersecting and not coincident
 		return nil, fmt.Errorf("%s-%s Triggers for the schedule are either not exactly intersecting or are coinciding", trg1, trg2)
@@ -162,10 +164,10 @@ func overlapsWith(left, right Schedule) (bool, bool, bool) {
 // ================================== Json Relay state is for file reads ============================
 // Making a relay state from a json file
 type JSONRelayState struct {
-	ON      string   `json:"on"`
-	OFF     string   `json:"off"`
-	IDs     []string `json:"ids"`
-	Primary bool     `json:"primary"`
+	ON      string   `json:"on" bson:"on"`
+	OFF     string   `json:"off" bson:"off"`
+	IDs     []string `json:"ids" bson:"ids"`
+	Primary bool     `json:"primary" bson:"primary"`
 }
 
 // ToSchedule : reads from json and pumps up a schedule
@@ -191,6 +193,33 @@ func (jrs *JSONRelayState) ToSchedule() (Schedule, error) {
 
 }
 
+// SliceOfJSONRelayState : we are just encapsulating the slices to extend functions over it
+type SliceOfJSONRelayState []JSONRelayState
+
+// From a SliceOfJSONRelayState to a slice of schedules, this not only converts but also marks the schedules with conflicts
+// Used when reading schedules from files or API payloads
+func (sofjrs SliceOfJSONRelayState) ToSchedules(scheds *[]Schedule) error {
+	result := []Schedule{}
+	// converting from json schedules to schedule object slice
+	for _, s := range sofjrs {
+		sched, err := s.ToSchedule()
+		if err != nil {
+			return err
+		}
+		result = append(result, sched)
+	}
+	// flagging conflicts
+	for i, s := range result {
+		for _, ss := range result[i+1:] {
+			if s.ConflictsWith(ss) {
+				ss.AddConflict()
+			}
+		}
+	}
+	*scheds = result
+	return nil
+}
+
 // ReadScheduleFile : just so that we can read json schedule file, and get slice of schedules
 // we have also added some conflict detection in here
 // Call this from the client function to get schedules with their conflict numbers
@@ -203,26 +232,31 @@ func ReadScheduleFile(file string) ([]Schedule, error) {
 	}
 	jsonFile.Close() // since this returns a closure, the call to this cannot be deferred
 	type conf struct {
-		Schedules []JSONRelayState `json:"schedules"`
+		Schedules SliceOfJSONRelayState `json:"schedules"`
 	}
 	c := conf{}
 	json.Unmarshal(bytes, &c)
 	scheds := []Schedule{}
+	if err := c.Schedules.ToSchedules(&scheds); err != nil {
+		return nil, err
+	}
+	// +++++++++++++++ drop this when you are done testing
 	// converting from json schedules to schedule object slice
-	for _, s := range c.Schedules {
-		sched, err := s.ToSchedule()
-		if err != nil {
-			return nil, err
-		}
-		scheds = append(scheds, sched)
-	}
-	// flagging conflicts
-	for i, s := range scheds {
-		for _, ss := range scheds[i+1:] {
-			if s.ConflictsWith(ss) {
-				ss.AddConflict()
-			}
-		}
-	}
+	// for _, s := range c.Schedules {
+	// 	sched, err := s.ToSchedule()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	scheds = append(scheds, sched)
+	// }
+	// // flagging conflicts
+	// for i, s := range scheds {
+	// 	for _, ss := range scheds[i+1:] {
+	// 		if s.ConflictsWith(ss) {
+	// 			ss.AddConflict()
+	// 		}
+	// 	}
+	// }
+	// ++++++++++++++++++++++
 	return scheds, nil
 }
