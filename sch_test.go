@@ -41,7 +41,6 @@ func TestWriteSchedules(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	return
 }
 
 func TestScheduleConflicts(t *testing.T) {
@@ -143,15 +142,17 @@ func TestScheduleLoop(t *testing.T) {
 }
 
 func TestOverlappingSchedules(t *testing.T) {
-	scheds, err := ReadScheduleFile("test_sched3.json")
+	scheds, err := ReadScheduleFile("test_sched4.json")
 	if err != nil {
 		t.Error(err)
 		panic("TestReadSchedules: error reading schedule files")
 	}
 	for i, s := range scheds {
 		for _, ss := range scheds[i+1:] {
-			ou, in, ov := overlapsWith(s, ss)
-			t.Logf("outside: %t, inside: %t, overlap: %t", ou, in, ov)
+			ou, in, ov, co := overlapsWith(s, ss)
+			t.Logf("%s/%d-%s/%d", s, s.Delay(), ss, ss.Delay())
+			t.Logf("outside: %t, inside: %t, overlap: %t, coincide: %t", ou, in, ov, co)
+			t.Logf("Conflicts: %t", s.ConflictsWith(ss))
 		}
 	}
 }

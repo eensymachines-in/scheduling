@@ -134,8 +134,8 @@ func Loop(sch Schedule, cancel, interrupt chan interface{}, send chan []byte, er
 }
 
 // overlapsWith : is the function for basis of identifying the conflicts in any 2 schedules
-func overlapsWith(left, right Schedule) (bool, bool, bool) {
-	var outside, inside, overlap bool
+func overlapsWith(left, right Schedule) (bool, bool, bool, bool) {
+	var outside, inside, overlap, coincide bool
 	// Midpoints are distance of the half time since midnight for any schedule
 	mdpt1, mdpt2 := left.Midpoint(), right.Midpoint()
 	// half duration of each schedule
@@ -152,12 +152,24 @@ func overlapsWith(left, right Schedule) (bool, bool, bool) {
 	} else {
 		min, max = hfdur2, hfdur1
 	}
-	if outside, inside = (mdptdis > (hfdur1 + hfdur2)), ((mdptdis + min) < max); outside || inside {
+	// https://eensymachines-in.github.io/luminapi/schedule-conflicts
+	// https://github.com/eensymachines-in/scheduling/issues/3
+	outside = (mdptdis > (hfdur1 + hfdur2))
+	inside = ((mdptdis + min) < max)
+	if outside || inside {
+		// this means its completely outside or completely inside
 		overlap = false
 	} else {
-		overlap = true
+		if (mdptdis == hfdur1+hfdur2) || (mdptdis+min == max) {
+			// is the case of coincidence but not overlap
+			coincide = true
+			overlap = false
+		} else {
+			// None of the cases and hence the schedules are overlapping
+			overlap = true
+		}
 	}
-	return outside, inside, overlap
+	return outside, inside, overlap, coincide
 }
 
 // JSONRelayState : relaystate but in json format

@@ -45,7 +45,7 @@ func (ps *primarySched) Close() {
 	log.Infof("%s Schedule is now closing", ps)
 }
 func (ps *primarySched) String() string {
-	return fmt.Sprintf("%s - %s %v %v", TmStrFromUnixSecs(ps.lower.At()), TmStrFromUnixSecs(ps.higher.At()), ps.lower.RelayIDs(), ps.higher.RelayIDs())
+	return fmt.Sprintf("%s - %s %v ", TmStrFromUnixSecs(ps.lower.At()), TmStrFromUnixSecs(ps.higher.At()), ps.lower.RelayIDs())
 }
 
 // NearFarTrigger : in context of the current time, this helps to get the triggers that are near or far
@@ -81,8 +81,9 @@ func (ps *primarySched) ConflictsWith(another Schedule) bool {
 		// overlaps are checked for circular and non-cicrular schedule
 		return true
 	}
-	outside, inside, overlap := overlapsWith(ps, another)
-	if outside || inside {
+	// When comparing with primary schedule all that matters is if the schedule is not overlapping
+	outside, inside, overlap, coinc := overlapsWith(ps, another)
+	if outside || inside || coinc {
 		// When its the primary schedule the patch schedule will always be given proceedence
 		another.AddDelay(ps.Delay())
 	}

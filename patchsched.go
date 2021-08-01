@@ -32,27 +32,28 @@ func (pas *patchSchedule) ToTask() (Trigger, Trigger, int, int) {
 
 // Please be ware here another cannot be a primary schedule
 func (pas *patchSchedule) ConflictsWith(another Schedule) bool {
-	// Here schedules with same time slot (subset, overlaps, coincide) cannot have the same relays
-	// if they have disjoint relays to work on.. then all of the above is allowed
-	// for patch schedule, it cannot overlap / coincide with primary schedule
-	_, inside, overlap := overlapsWith(pas, another)
-	if inside {
-		another.AddDelay(pas.Delay())
-	}
-	if overlap {
-		_, ok := another.(*patchSchedule)
-		if ok {
-			// patch schedule when being assesed with othe patch schedule ..
-			// 2 patch schedules can have overlaps incase they are operating on different relays
-			anLw, _ := another.Triggers()
-			if pas.lower.Intersects(anLw, false) {
-				// Overlaps and also intersects .. so conflict
-				return true
+	// https://eensymachines-in.github.io/luminapi/schedule-conflicts
+	// Read here patch schedules conflict with other patch schedules only in the case of overlap and intersection
+	// in all other cases if the schedules are delayed incase of intersection
+	outside, inside, overlap, coinc := overlapsWith(pas, another)
+	// Getting if there's an intersection on the relays
+	anLw, _ := another.Triggers()
+	intersects := pas.lower.Intersects(anLw, false)
+	if inside || outside || coinc {
+		// Delay is added only if schedule intersects
+		if intersects {
+			// Delay is added to that schedule that comes later in the day
+			if another.Midpoint() > pas.Midpoint() {
+				another.AddDelay(pas.Delay())
+			} else {
+				pas.AddDelay(another.Delay())
 			}
-			// Overlaps but has no intersection
-			return false
 		}
-		return true // if overlaps and it isnt another patch schedule then there is conflict
+		return false
 	}
-	return false // if there isnt any overlap then outright there isnt any conflict
+	if overlap && intersects {
+		_, ok := another.(*patchSchedule)
+		return ok // if the schedule type is not patchSchedule conflict cannot be determined
+	}
+	return false // if the schedules either does not overlap or does not intersect
 }
